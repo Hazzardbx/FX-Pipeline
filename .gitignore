@@ -1,0 +1,9 @@
+CONTEXTO_PROJETO_BOOTCAMP.md
+overall-ideas.md
+
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+*.log
