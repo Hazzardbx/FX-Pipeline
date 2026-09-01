@@ -7,12 +7,15 @@ import time
 #Source of api and documentation
 #https://docs.apilayer.com/exchangeratesapi/docs/api-documentation?utm_source=ExchangeratesAPIHomePage&utm_medium=Referral
 
+
+## EXTRACT
+
 #API
 url = "https://api.frankfurter.dev/v2/rates"
 
 # params = {"base": "EUR", "quotes": "USD", "from": "2026-01-01", "to": "2026-01-05"}
-# params = {"from": "2026-01-01", "base": "EUR", "quotes": "USD"}
-params = {"from": "2026-01-01", "base": "EUR", "quotes": "XXX"}
+params = {"from": "2026-01-01", "base": "EUR", "quotes": "USD"}
+# params = {"from": "2026-01-01", "base": "EUR", "quotes": "XXX"} - # test for error handling
 
 
 for i in range(5):
@@ -35,7 +38,7 @@ if response.status_code != 200:
 
 # print(response.json())
 
-rate = response.json()[0]["rate"]
+# rate = response.json()[0]["rate"] # test leftover: used to test the first rate, replaced by loop -> xchangerate
 
 # print(rate)
 
@@ -60,3 +63,19 @@ print(df)
 # append to df -> save -> export
 # add calculator to convert
 # connect to database
+
+ ## TRANSFORM
+ 
+df['date'] = pd.to_datetime(df['date']) # convert date column to datetime format
+# print(df.dtypes)
+
+# df['base'][2] = ' ' 
+# df.loc[2, 'base'] = None # test for null values in base column
+
+if df.isnull().values.any():
+    nulls = df.isnull().sum()
+    print(f"Data contains null values in {nulls[nulls > 0].index.tolist()}.")  
+    null_rows = df[df.isnull().any(axis=1)] # for debugging, to see which rows contain null values
+    df.dropna(subset=['date','base','quote','rate'], inplace=True) # subset = columns to check for null values, inplace = modify df in place
+    print(f"Null values removed from columns: {nulls[nulls > 0].index.tolist()} and added to null_rows variable for debugging.")
+    
