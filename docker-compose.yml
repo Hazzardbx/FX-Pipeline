@@ -1,0 +1,26 @@
+services:
+
+  postgres_db:
+    image: postgres:16
+    volumes:
+      - fx-postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: fx_pipeline
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  app:
+    build: .
+    environment:
+      POSTGRES_HOST: postgres_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: fx_pipeline
+    depends_on:
+      postgres_db:
+        condition: service_healthy
+volumes:
+  fx-postgres-data:

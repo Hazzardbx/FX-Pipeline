@@ -74,8 +74,19 @@ df['date'] = pd.to_datetime(df['date']) # convert date column to datetime format
 
 if df.isnull().values.any():
     nulls = df.isnull().sum()
-    print(f"Data contains null values in {nulls[nulls > 0].index.tolist()}.")  
+    print(f"Data contains null values in {nulls[nulls > 0].index.tolist()}.") 
     null_rows = df[df.isnull().any(axis=1)] # for debugging, to see which rows contain null values
-    df.dropna(subset=['date','base','quote','rate'], inplace=True) # subset = columns to check for null values, inplace = modify df in place
+    df.dropna(subset=['date','base','quote','rate'], inplace=True) # subset = columns to check for null values, inplace = modify df in place not return a new df
     print(f"Null values removed from columns: {nulls[nulls > 0].index.tolist()} and added to null_rows variable for debugging.")
-    
+
+## LOAD
+#1.preparing Postgres via docker compose (DONE)
+#2.next, run docker compose up. "Starts the services defined in the docker-compose.yml file, creating containers as needed."
+#3.write Python code to connect to postgres and insert data into a table (insert .. on conflict), in case of duplicates or if job runs 2x. 
+
+## ORCHESTRATE the service
+#run daily and automatically. check how to (reminder check which: cron or APScheduler)
+
+
+## SERVE - show the results
+#streamlit app - business questions on the data (ex. most volatile pair, day-over-day change, trend over time)
