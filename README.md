@@ -5,7 +5,7 @@ End-to-end idempotent data pipeline for daily currency exchange rates (ECB refer
 ## Status: In development
 
 - [x] Extract — fetch rates from Frankfurter API, with retry + exponential backoff on server errors
-- [ ] Transform
-- [ ] Load (idempotent upsert)
+- [x] Transform
+- [x] Load (idempotent upsert)
 - [ ] Orchestrate
 - [ ] Serve (Streamlit)
