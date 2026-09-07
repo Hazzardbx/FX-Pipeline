@@ -3,7 +3,8 @@ import requests
 import pandas as pd
 import time
 import os
-import psycopg2
+import psycopg2 #runs in docker container, need to install psycopg2-binary in requirements.txt
+import APScheduler #runs in docker container, need to install APScheduler in requirements.txt
 
 #Source of api and documentation
 #https://docs.apilayer.com/exchangeratesapi/docs/api-documentation?utm_source=ExchangeratesAPIHomePage&utm_medium=Referral
@@ -15,8 +16,9 @@ import psycopg2
 url = "https://api.frankfurter.dev/v2/rates"
 
 # params = {"base": "EUR", "quotes": "USD", "from": "2026-01-01", "to": "2026-01-05"}
-params = {"from": "2026-01-01", "base": "EUR", "quotes": "USD"}
 # params = {"from": "2026-01-01", "base": "EUR", "quotes": "XXX"} - # test for error handling
+# params = {"from": "2026-01-01", "base": "EUR", "quotes": "USD"}
+params = {"from": "2024-01-01" , "base": "EUR", "quotes": "USD,GBP,JPY,CHF,CNY"}
 
 
 for i in range(5):
@@ -45,7 +47,8 @@ if response.status_code != 200:
 
 xchangerate = []
 
-for curr in response.json()[:10]:
+# for curr in response.json()[:10]: - test leftover: used to test the first 10 rates, removed "[:10]" 
+for curr in response.json():
     daily_rate = {
         "date": curr['date'],
         "base": curr['base'],
@@ -83,7 +86,7 @@ if df.isnull().values.any():
 ## LOAD
 #1.preparing Postgres via docker compose (DONE)
 #2.next, run docker compose up. "Starts the services defined in the docker-compose.yml file, creating containers as needed." (DONE)
-#3.write Python code to connect to postgres and insert data into a table (insert .. on conflict), in case of duplicates or if job runs 2x. 
+#3.write Python code to connect to postgres and insert data into a table (insert .. on conflict), in case of duplicates or if job runs 2x. (DONE)
 
 create_table_query = """
 create table if NOT EXISTS xchange_rates (
@@ -107,8 +110,8 @@ try:
 except Exception as e:
     print(f"Error connecting to the database: {e}")
 
-#reminder: after connecting to the DB, create a cursor object to execute SQL queries
-#cursor creates a channel to the DB that allows to send commands and receive results.
+#reminder: after connecting to the DB, create a cursor object to execute SQL queries (DONE)
+#cursor creates a channel to the DB that allows to send commands and receive results. 
 cur = conn.cursor()
 cur.execute(create_table_query)
 conn.commit() #commit the changes to the db
@@ -118,14 +121,19 @@ conn.commit() #commit the changes to the db
 #insert data into table:
 for index, row in df.iterrows():
     cur.execute("INSERT INTO xchange_rates (date, base, quote, rate) VALUES (%s, %s, %s, %s) ON CONFLICT (date, base, quote) DO UPDATE SET rate = EXCLUDED.rate", (row['date'], row['base'], row['quote'], row['rate']))
+    #Insert with ON CONFLICT clause to handle duplicates. If a row with the same date, base, and quote already exists, it will update the rate instead of inserting a new row.
+    
 # rate = EXCLUDED.rate replaces the value inside    
     
-conn.commit()
-cur.close()
-conn.close()
+conn.commit() # commit the changes to the db
+cur.close() # close the cursor to free up resources
+conn.close() # close the connection to the db
+
 
 ## ORCHESTRATE the service
 #run daily and automatically. check how to (reminder check which: cron or APScheduler)
+
+
 
 
 ## SERVE - show the results
