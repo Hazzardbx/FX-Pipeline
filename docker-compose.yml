@@ -23,6 +23,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: secret
       POSTGRES_DB: fx_pipeline
+      PYTHONUNBUFFERED: 1 # Ensures that the Python output is sent straight to the terminal without being buffered, which is useful for logging (Had a problem after I added the scheduler)
     depends_on:
       postgres_db:
         condition: service_healthy
@@ -32,5 +33,5 @@ volumes:
 #NOTE: added volumes: - .:/app to app service so code changes reflect immediately, without rebuilding the image every time.
 
 #Commandas to run the services:
-#1. docker compose up -d (detached mode, runs in the background)
+#1. docker compose up -d (detached mode, runs in the background) let's me run commands on the terminal
 #2. docker compose up --build will rebuild the image if there are changes in the code, and then start the services.
