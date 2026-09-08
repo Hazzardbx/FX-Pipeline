@@ -11,6 +11,7 @@ from apscheduler.triggers.cron import CronTrigger # CronTrigger = can specify a 
 #Source of api and documentation
 #https://docs.apilayer.com/exchangeratesapi/docs/api-documentation?utm_source=ExchangeratesAPIHomePage&utm_medium=Referral
 #APScheduler guide: https://betterstack.com/community/guides/scaling-python/apscheduler-scheduled-tasks/
+#APScheduler how it works: https://apscheduler.com/#how%20it%20works
 
 def run_pipeline():
     ## EXTRACT
@@ -89,8 +90,8 @@ def run_pipeline():
 
     ## LOAD
     #1.preparing Postgres via docker compose (DONE)
-    #2.next, run docker compose up. "Starts the services defined in the docker-compose.yml file, creating containers as needed." (DONE)
-    #3.write Python code to connect to postgres and insert data into a table (insert .. on conflict), in case of duplicates or if job runs 2x. (DONE)
+    #2. docker compose up. What it does reminder: "Starts the services defined in the docker-compose.yml file, creating containers as needed." (DONE)
+    #3.write Python code to connect to postgres and insert data into a table. use: (insert .. on conflict), in case of duplicates or if job runs 2x. (DONE)
 
     create_table_query = """
     create table if NOT EXISTS xchange_rates (
@@ -98,7 +99,8 @@ def run_pipeline():
         base varchar(3) not null,
         quote varchar(3) not null,
         rate decimal(10, 6) not null,
-        primary key (date, base, quote)
+        primary key (date, base, quote),
+        ingested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP 
         )
     """
 
@@ -124,10 +126,12 @@ def run_pipeline():
 
     #insert data into table:
     for index, row in df.iterrows():
-        cur.execute("INSERT INTO xchange_rates (date, base, quote, rate) VALUES (%s, %s, %s, %s) ON CONFLICT (date, base, quote) DO UPDATE SET rate = EXCLUDED.rate", (row['date'], row['base'], row['quote'], row['rate']))
+        cur.execute("INSERT INTO xchange_rates (date, base, quote) VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP) ON CONFLICT (date, base, quote, ingested_at) DO UPDATE SET rate = EXCLUDED.rate, ingested_at = EXCLUDED.ingested_at", (row['date'], row['base'], row['quote'], row['rate']))
         #Insert with ON CONFLICT clause to handle duplicates. If a row with the same date, base, and quote already exists, it will update the rate instead of inserting a new row.
         
-    # rate = EXCLUDED.rate replaces the value inside    
+    # rate = EXCLUDED.rate replaces the value inside   
+    # ON CLONFLICT (columns) = if there's a value in the columns that already exists then it updates.
+    # DO UPDATE SET rate = EXCLUDED.rate = update the rate column with the new value from the insert statement.
         
     conn.commit() # commit the changes to the db
     cur.close() # close the cursor to free up resources
@@ -136,10 +140,16 @@ def run_pipeline():
 run_pipeline()
 
 ## ORCHESTRATE the service
-#run daily and automatically. check how to (reminder check which: cron or APScheduler)
+#run daily and automatically. 
+#
 
 def run_daily():
-    trigger = CronTrigger(hour=17, minute=0, day_of_week='mon-fri', timezone='Europe/Berlin')  # Run daily at 5 PM (17:00) on weekdays
+    from datetime import datetime, timedelta
+    now_plus_1 = datetime.now() + timedelta(minutes=1)
+    trigger = CronTrigger(hour=now_plus_1.hour, minute=now_plus_1.minute, timezone='Europe/Lisbon') # 1min later testing
+    
+    
+    # trigger = CronTrigger(hour=17, minute=0, day_of_week='mon-fri', timezone='Europe/Berlin')  # Run daily at 5 PM CET (17:00) on weekdays
     #Already ran script with hardcoded time to test. test = OK
     scheduler = BlockingScheduler()
     scheduler.add_job(run_pipeline, trigger=trigger)
@@ -147,5 +157,8 @@ def run_daily():
 
 run_daily()
 
+#Still need to make sure this runs in the background when I close Docker Desktop. []
+
 ## SERVE - show the results
 #streamlit app - business questions on the data (ex. most volatile pair, day-over-day change, trend over time)
+

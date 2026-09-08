@@ -32,6 +32,6 @@ volumes:
 
 #NOTE: added volumes: - .:/app to app service so code changes reflect immediately, without rebuilding the image every time.
 
-#Commandas to run the services:
-#1. docker compose up -d (detached mode, runs in the background) let's me run commands on the terminal
-#2. docker compose up --build will rebuild the image if there are changes in the code, and then start the services.
+#Commands to run the services:
+#1. docker compose up -d -> (detached mode, runs in the background) let's me run commands on the terminal
+#2. docker compose up --build -> will rebuild the image if there are changes in the code, and then start the services.
