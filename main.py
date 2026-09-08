@@ -146,7 +146,7 @@ run_pipeline()
 def run_daily():
     from datetime import datetime, timedelta
     now_plus_1 = datetime.now() + timedelta(minutes=1)
-    trigger = CronTrigger(hour=now_plus_1.hour, minute=now_plus_1.minute, timezone='Europe/Lisbon') # 1min later testing
+    trigger = CronTrigger(hour=now_plus_1.hour, minute=now_plus_1.minute, timezone='Europe/Lisbon') # 1min later testing - reminder only shows results if there is new data as the code is.
     
     
     # trigger = CronTrigger(hour=17, minute=0, day_of_week='mon-fri', timezone='Europe/Berlin')  # Run daily at 5 PM CET (17:00) on weekdays
