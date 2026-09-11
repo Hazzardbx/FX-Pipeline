@@ -30,8 +30,16 @@ services:
 volumes:
   fx-postgres-data:
 
-#NOTE: added volumes: - .:/app to app service so code changes reflect immediately, without rebuilding the image every time.
+#NOTE: added ->     
+      # volumes:
+      # - .:/app 
+      # to the app service so code changes reflect immediately, without rebuilding the image every time.
 
 #Commands to run the services:
 #1. docker compose up -d -> (detached mode, runs in the background) let's me run commands on the terminal
 #2. docker compose up --build -> will rebuild the image if there are changes in the code, and then start the services.
+
+#After restarting pc:
+#1. open Docker desktop
+#2. vs code with docker compose up -d
+#3. dbeaver and connect

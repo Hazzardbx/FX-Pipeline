@@ -3,7 +3,7 @@ import requests
 import pandas as pd
 import time
 import os
-import psycopg2 #runs in docker container, need to install psycopg2-binary in requirements.txt
+import psycopg2 # pyright: ignore[reportMissingModuleSource] #runs in docker container, need to install psycopg2-binary in requirements.txt
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger # CronTrigger = can specify a time and date to run the job
 #runs in docker container, need to install APScheduler in requirements.txt
@@ -12,6 +12,18 @@ from apscheduler.triggers.cron import CronTrigger # CronTrigger = can specify a 
 #https://docs.apilayer.com/exchangeratesapi/docs/api-documentation?utm_source=ExchangeratesAPIHomePage&utm_medium=Referral
 #APScheduler guide: https://betterstack.com/community/guides/scaling-python/apscheduler-scheduled-tasks/
 #APScheduler how it works: https://apscheduler.com/#how%20it%20works
+
+# streamlit community cloud
+# presentation format 
+
+# Questions:
+#     Percentage change: check how much each curr gained or lost in value. filter range  (graph)
+#     volatility: check how much rate fluctuates in a period of time. filter range
+#     trend: add a graph to show the trend of a currency pair over time(up or down or the same). filter range
+#     correlation to assess exchange-rate exposure: check if two currency pairs are correlated to check risk (if one goes up the other one goes up - no risk in having both). filter range
+#
+# whats the challenge  - what i set out to acoomplish - how did i do it - whats the result 
+
 
 def run_pipeline():
     ## EXTRACT
@@ -126,7 +138,7 @@ def run_pipeline():
 
     #insert data into table:
     for index, row in df.iterrows():
-        cur.execute("INSERT INTO xchange_rates (date, base, quote) VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP) ON CONFLICT (date, base, quote, ingested_at) DO UPDATE SET rate = EXCLUDED.rate, ingested_at = EXCLUDED.ingested_at", (row['date'], row['base'], row['quote'], row['rate']))
+        cur.execute("INSERT INTO xchange_rates (date, base, quote, rate, ingested_at) VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP) ON CONFLICT (date, base, quote) DO UPDATE SET rate = EXCLUDED.rate, ingested_at = EXCLUDED.ingested_at", (row['date'], row['base'], row['quote'], row['rate']))
         #Insert with ON CONFLICT clause to handle duplicates. If a row with the same date, base, and quote already exists, it will update the rate instead of inserting a new row.
         
     # rate = EXCLUDED.rate replaces the value inside   
@@ -145,13 +157,12 @@ run_pipeline()
 
 def run_daily():
     from datetime import datetime, timedelta
-    now_plus_1 = datetime.now() + timedelta(minutes=1)
-    trigger = CronTrigger(hour=now_plus_1.hour, minute=now_plus_1.minute, timezone='Europe/Lisbon') # 1min later testing - reminder only shows results if there is new data as the code is.
-    
+    testing_1min = datetime.now() + timedelta(minutes=1)
+    trigger = CronTrigger(hour=testing_1min.hour, minute=testing_1min.minute, timezone='Europe/Lisbon') # 1min later testing - reminder only shows results if there is new data as the code is.
+        #Already ran script with hardcoded time to test. test = OK
     
     # trigger = CronTrigger(hour=17, minute=0, day_of_week='mon-fri', timezone='Europe/Berlin')  # Run daily at 5 PM CET (17:00) on weekdays
-    #Already ran script with hardcoded time to test. test = OK
-    scheduler = BlockingScheduler()
+    scheduler = BlockingScheduler() #remains active waiting for next time to run.
     scheduler.add_job(run_pipeline, trigger=trigger)
     scheduler.start()
 
