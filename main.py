@@ -26,7 +26,7 @@ from apscheduler.triggers.cron import CronTrigger # CronTrigger = can specify a 
 
 
 def run_pipeline():
-    ## EXTRACT
+    ## EXTRACT-------------------------------------------------------------------------------------
 
     #API
     url = "https://api.frankfurter.dev/v2/rates"
@@ -85,7 +85,7 @@ def run_pipeline():
     # add calculator to convert
     # connect to database
 
-    ## TRANSFORM
+    ## TRANSFORM -------------------------------------------------------------------------------------
     
     df['date'] = pd.to_datetime(df['date']) # convert date column to datetime format
     # print(df.dtypes)
@@ -100,7 +100,7 @@ def run_pipeline():
         df.dropna(subset=['date','base','quote','rate'], inplace=True) # subset = columns to check for null values, inplace = not return a new df
         print(f"Null values removed from columns: {nulls[nulls > 0].index.tolist()} and added to null_rows variable for debugging.")
 
-    ## LOAD
+    ## LOAD-------------------------------------------------------------------------------------
     #1.preparing Postgres via docker compose (DONE)
     #2. docker compose up. What it does reminder: "Starts the services defined in the docker-compose.yml file, creating containers as needed." (DONE)
     #3.write Python code to connect to postgres and insert data into a table. use: (insert .. on conflict), in case of duplicates or if job runs 2x. (DONE)
@@ -151,25 +151,30 @@ def run_pipeline():
 
 run_pipeline()
 
-## ORCHESTRATE the service
+## ORCHESTRATE the service -------------------------------------------------------------------------------------
 #run daily and automatically. 
 #
 
+# def run_daily():
+#     from datetime import datetime, timedelta
+#     testing_1min = datetime.now() + timedelta(minutes=1)
+#     # trigger = CronTrigger(hour=testing_1min.hour, minute=testing_1min.minute, timezone='Europe/Lisbon') # 1min later testing - reminder only shows results if there is new data as the code is.
+#         #Already ran script with hardcoded time to test. test = OK
+    
 def run_daily():
     from datetime import datetime, timedelta
-    testing_1min = datetime.now() + timedelta(minutes=1)
-    trigger = CronTrigger(hour=testing_1min.hour, minute=testing_1min.minute, timezone='Europe/Lisbon') # 1min later testing - reminder only shows results if there is new data as the code is.
-        #Already ran script with hardcoded time to test. test = OK
-    
-    # trigger = CronTrigger(hour=17, minute=0, day_of_week='mon-fri', timezone='Europe/Berlin')  # Run daily at 5 PM CET (17:00) on weekdays
-    scheduler = BlockingScheduler() #remains active waiting for next time to run.
+    trigger = CronTrigger(hour=17, minute=0, day_of_week='mon-fri', timezone='Europe/Berlin')
+    scheduler = BlockingScheduler()
     scheduler.add_job(run_pipeline, trigger=trigger)
     scheduler.start()
-
-run_daily()
+    
+if __name__ == "__main__":
+    run_daily()
 
 #Still need to make sure this runs in the background when I close Docker Desktop. []
 
-## SERVE - show the results
+## SERVE --------------------------------------------------------------------------------------
+# show the results
 #streamlit app - business questions on the data (ex. most volatile pair, day-over-day change, trend over time)
 
+#add note to CM that it updates.

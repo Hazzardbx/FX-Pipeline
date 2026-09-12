@@ -1,45 +1,9 @@
 services:
-
-  postgres_db:
-    image: postgres:16
-    ports:
-      - "5432:5432" # Added to connect to the database from the host machine, in this case DBeaver.
-    volumes:
-      - fx-postgres-data:/var/lib/postgresql/data # Persists the database data in a Docker volume named fx-postgres-data, which is defined at the bottom of the file. This ensures that the data is not lost when the container is stopped or removed.
-    environment:
-      POSTGRES_PASSWORD: secret 
-      POSTGRES_DB: fx_pipeline
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"] # Checks if the PostgreSQL server is ready to accept connections, every 5 seconds
-      interval: 5s
-      timeout: 5s
-      retries: 5
   app:
-    build: . # Builds the Docker image from the current directory
+    build: .
     volumes:
-      - .:/app # Mounts the current directory to /app in the container, allowing the app to access the code and files
+      - .:/app
+    env_file:
+      - .env #aws
     environment:
-      POSTGRES_HOST: postgres_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: secret
-      POSTGRES_DB: fx_pipeline
-      PYTHONUNBUFFERED: 1 # Ensures that the Python output is sent straight to the terminal without being buffered, which is useful for logging (Had a problem after I added the scheduler)
-    depends_on:
-      postgres_db:
-        condition: service_healthy
-volumes:
-  fx-postgres-data:
-
-#NOTE: added ->     
-      # volumes:
-      # - .:/app 
-      # to the app service so code changes reflect immediately, without rebuilding the image every time.
-
-#Commands to run the services:
-#1. docker compose up -d -> (detached mode, runs in the background) let's me run commands on the terminal
-#2. docker compose up --build -> will rebuild the image if there are changes in the code, and then start the services.
-
-#After restarting pc:
-#1. open Docker desktop
-#2. vs code with docker compose up -d
-#3. dbeaver and connect
+      PYTHONUNBUFFERED: 1
