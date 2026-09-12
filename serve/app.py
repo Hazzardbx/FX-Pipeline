@@ -7,14 +7,6 @@ import os
 # https://www.datacamp.com/tutorial/streamlit?utm_aid=196565213035&utm_loc=9215245-&utm_mtd=p-c&utm_kw=wordcloud%20python
 # https://docs.streamlit.io/develop/api-reference/data/st.dataframe
 
-# conn = psycopg2.connect(
-#     host="localhost",
-#     port="5432",
-#     database="fx_pipeline",
-#     user="postgres",
-#     password="secret"
-# )
-
 load_dotenv()
 
 conn = psycopg2.connect(
@@ -27,13 +19,6 @@ conn = psycopg2.connect(
 
 
 
-
-# fetch_query = "select * from pct_change_view"  # Fetch the last 10 rows from the table
-
-# st.title("ForeX Pipeline")
-# df = pd.read_sql(fetch_query, conn)  
-# st.dataframe(df)  # Display the DataFrame in Streamlit
-#streamlit run app.py
 
 st.title("ForeX Pipeline")
 df_pct_change = pd.read_sql("select * from pct_change_view", conn)

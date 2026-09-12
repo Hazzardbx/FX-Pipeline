@@ -1,4 +1,3 @@
-# import sys
 import requests
 import pandas as pd
 import time
@@ -8,34 +7,15 @@ from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger # CronTrigger = can specify a time and date to run the job
 #runs in docker container, need to install APScheduler in requirements.txt
 
-#Source of api and documentation
-#https://docs.apilayer.com/exchangeratesapi/docs/api-documentation?utm_source=ExchangeratesAPIHomePage&utm_medium=Referral
-#APScheduler guide: https://betterstack.com/community/guides/scaling-python/apscheduler-scheduled-tasks/
-#APScheduler how it works: https://apscheduler.com/#how%20it%20works
-
-# streamlit community cloud
-# presentation format 
-
-# Questions:
-#     Percentage change: check how much each curr gained or lost in value. filter range  (graph)
-#     volatility: check how much rate fluctuates in a period of time. filter range
-#     trend: add a graph to show the trend of a currency pair over time(up or down or the same). filter range
-#     correlation to assess exchange-rate exposure: check if two currency pairs are correlated to check risk (if one goes up the other one goes up - no risk in having both). filter range
-#
-# whats the challenge  - what i set out to acoomplish - how did i do it - whats the result 
+#Source of API: https://docs.apilayer.com/exchangeratesapi/docs/api-documentation
+#APScheduler docs: https://apscheduler.com/#how%20it%20works
 
 
 def run_pipeline():
-    ## EXTRACT-------------------------------------------------------------------------------------
+    ## EXTRACT -------------------------------------------------------------------------------------
 
-    #API
     url = "https://api.frankfurter.dev/v2/rates"
-
-    # params = {"base": "EUR", "quotes": "USD", "from": "2026-01-01", "to": "2026-01-05"}
-    # params = {"from": "2026-01-01", "base": "EUR", "quotes": "XXX"} - # test for error handling
-    # params = {"from": "2026-01-01", "base": "EUR", "quotes": "USD"}
-    params = {"from": "2024-01-01" , "base": "EUR", "quotes": "USD,GBP,JPY,CHF,CNY"}
-
+    params = {"from": "2024-01-01", "base": "EUR", "quotes": "USD,GBP,JPY,CHF,CNY"}
 
     for i in range(5):
         response = requests.get(url, params=params)
@@ -46,64 +26,38 @@ def run_pipeline():
             break
         elif response.status_code >= 500 and response.status_code < 600:
             print(f"Server error, retrying...[{i}]")
-            time.sleep(2 ** i)
-    # Wait for i seconds before retrying
-        else: print("No errors")    
-        
+            time.sleep(2 ** i) # exponential backoff
+        else:
+            print("No errors")
+
     if response.status_code != 200:
         print(f"Failed to fetch data after {i+1} attempts. Status code: {response.status_code}")
-        # sys.exit(1) # 1 = error exit code (0 = success, other number = failure)
         return # exit the function without terminating the entire script
 
-
-    # print(response.json())
-
-    # rate = response.json()[0]["rate"] # test leftover: used to test the first rate, replaced by loop -> xchangerate
-
-    # print(rate)
-
     xchangerate = []
-
-    # for curr in response.json()[:10]: - test leftover: used to test the first 10 rates, removed "[:10]" 
     for curr in response.json():
         daily_rate = {
             "date": curr['date'],
             "base": curr['base'],
             "quote": curr['quote'],
             "rate":  curr['rate']
-        } 
+        }
         xchangerate.append(daily_rate)
-        # print(f"{curr['date']} - {curr['base']} to {curr['quote']}: {curr['rate']}"),
-    
+
     df = pd.DataFrame(xchangerate)
-
-
     print(df)
 
-
-    # append to df -> save -> export
-    # add calculator to convert
-    # connect to database
-
     ## TRANSFORM -------------------------------------------------------------------------------------
-    
-    df['date'] = pd.to_datetime(df['date']) # convert date column to datetime format
-    # print(df.dtypes)
 
-    # df['base'][2] = ' ' 
-    # df.loc[2, 'base'] = None # test for null values in base column
+    df['date'] = pd.to_datetime(df['date']) # convert date column to datetime format
 
     if df.isnull().values.any():
         nulls = df.isnull().sum()
-        print(f"Data contains null values in {nulls[nulls > 0].index.tolist()}.") 
-        null_rows = df[df.isnull().any(axis=1)] # for debugging, to see which rows contain null values
+        print(f"Data contains null values in {nulls[nulls > 0].index.tolist()}.")
         df.dropna(subset=['date','base','quote','rate'], inplace=True) # subset = columns to check for null values, inplace = not return a new df
-        print(f"Null values removed from columns: {nulls[nulls > 0].index.tolist()} and added to null_rows variable for debugging.")
+        print(f"Null values removed from columns: {nulls[nulls > 0].index.tolist()}.")
 
-    ## LOAD-------------------------------------------------------------------------------------
-    #1.preparing Postgres via docker compose (DONE)
-    #2. docker compose up. What it does reminder: "Starts the services defined in the docker-compose.yml file, creating containers as needed." (DONE)
-    #3.write Python code to connect to postgres and insert data into a table. use: (insert .. on conflict), in case of duplicates or if job runs 2x. (DONE)
+    ## LOAD -------------------------------------------------------------------------------------
 
     create_table_query = """
     create table if NOT EXISTS xchange_rates (
@@ -128,53 +82,34 @@ def run_pipeline():
     except Exception as e:
         print(f"Error connecting to the database: {e}")
 
-    #reminder: after connecting to the DB, create a cursor object to execute SQL queries (DONE)
-    #cursor creates a channel to the DB that allows to send commands and receive results. 
+    #cursor creates a channel to the DB that allows to send commands and receive results.
     cur = conn.cursor()
     cur.execute(create_table_query)
-    conn.commit() #commit the changes to the db
-    # cur.close() 
+    conn.commit()
 
-
-    #insert data into table:
+    # ON CONFLICT: if a row with the same date/base/quote already exists, update the rate instead of inserting a duplicate.
+    # This is what makes re-running the pipeline safe (idempotent).
     for index, row in df.iterrows():
         cur.execute("INSERT INTO xchange_rates (date, base, quote, rate, ingested_at) VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP) ON CONFLICT (date, base, quote) DO UPDATE SET rate = EXCLUDED.rate, ingested_at = EXCLUDED.ingested_at", (row['date'], row['base'], row['quote'], row['rate']))
-        #Insert with ON CONFLICT clause to handle duplicates. If a row with the same date, base, and quote already exists, it will update the rate instead of inserting a new row.
-        
-    # rate = EXCLUDED.rate replaces the value inside   
-    # ON CLONFLICT (columns) = if there's a value in the columns that already exists then it updates.
-    # DO UPDATE SET rate = EXCLUDED.rate = update the rate column with the new value from the insert statement.
-        
-    conn.commit() # commit the changes to the db
-    cur.close() # close the cursor to free up resources
-    conn.close() # close the connection to the db
+
+    conn.commit()
+    cur.close()
+    conn.close()
 
 run_pipeline()
 
-## ORCHESTRATE the service -------------------------------------------------------------------------------------
-#run daily and automatically. 
-#
+## ORCHESTRATE -------------------------------------------------------------------------------------
+# Runs automatically on weekdays via APScheduler.
 
-# def run_daily():
-#     from datetime import datetime, timedelta
-#     testing_1min = datetime.now() + timedelta(minutes=1)
-#     # trigger = CronTrigger(hour=testing_1min.hour, minute=testing_1min.minute, timezone='Europe/Lisbon') # 1min later testing - reminder only shows results if there is new data as the code is.
-#         #Already ran script with hardcoded time to test. test = OK
-    
 def run_daily():
-    from datetime import datetime, timedelta
     trigger = CronTrigger(hour=17, minute=0, day_of_week='mon-fri', timezone='Europe/Berlin')
     scheduler = BlockingScheduler()
     scheduler.add_job(run_pipeline, trigger=trigger)
     scheduler.start()
-    
+
 if __name__ == "__main__":
     run_daily()
 
-#Still need to make sure this runs in the background when I close Docker Desktop. []
-
-## SERVE --------------------------------------------------------------------------------------
-# show the results
-#streamlit app - business questions on the data (ex. most volatile pair, day-over-day change, trend over time)
-
-#add note to CM that it updates.
+## SERVE -------------------------------------------------------------------------------------
+# See serve/app.py — Streamlit app answering business questions on the data
+# (price change, volatility, trend, correlation).
