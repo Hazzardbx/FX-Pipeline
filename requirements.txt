@@ -4,3 +4,4 @@ pandas
 psycopg2-binary #used to connect to PostgreSQL database from Python
 apscheduler #used to schedule the script to run at a specific time or interval
 python-dotenv
+matplotlib
