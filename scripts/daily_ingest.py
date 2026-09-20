@@ -38,7 +38,7 @@ for date_str, rates in data.get("rates", {}).items():
             INSERT INTO xchange_rates (date, base, quote, rate)
             VALUES (%s, %s, %s, %s)
             ON CONFLICT (date, base, quote) DO UPDATE SET rate = %s;
-        """, ("EUR", quote, float(rate), float(rate)))
+        """, (date_str, "EUR", quote, float(rate), float(rate)))
 
 conn.commit()
 cursor.close()
