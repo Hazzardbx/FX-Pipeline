@@ -1,7 +1,11 @@
+import os
+
+print(f"DEBUG: POSTGRES_HOST = {os.environ.get('POSTGRES_HOST')}")
+print(f"DEBUG: POSTGRES_USER = {os.environ.get('POSTGRES_USER')}")
+
 import requests
 import pandas as pd
 import psycopg2
-import os
 from datetime import datetime, timedelta
 
 # Get last date in DB
