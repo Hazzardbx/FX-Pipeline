@@ -43,6 +43,7 @@ response.raise_for_status()
 data = response.json()
     
 # Transform and load
+rows = 0
 for date_str, rates in data.get("rates", {}).items():
     for quote, rate in rates.items():
         cursor.execute("""
@@ -50,10 +51,14 @@ for date_str, rates in data.get("rates", {}).items():
             VALUES (%s, %s, %s, %s)
             ON CONFLICT (date, base, quote) DO UPDATE SET rate = %s;
         """, (date_str, "EUR", quote, float(rate), float(rate)))
-
-
+        rows += 1
+if rows == 0:
+    print(f"ERROR: API returned no rates for {start_date} -> {today}")
+    cursor.close()
+    conn.close()
+    sys.exit(1)
 
 conn.commit()
 cursor.close()
 conn.close()
-print("✓ Daily ingest complete")
+print(f"✓ Daily ingest complete ({rows} rows inserted)")
