@@ -2,7 +2,7 @@ name: Daily Data Ingest
 
 on:
   schedule:
-    - cron: '17 * * * *'  # Runs daily at 17:00 UTC (18:00 Lisbon)
+    - cron: '0 17 * * 1-5'  # Weekdays at 17:00 UTC, after ECB rates are published
   workflow_dispatch:      # Manual trigger
 
 jobs:
