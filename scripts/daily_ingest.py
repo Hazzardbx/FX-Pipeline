@@ -1,8 +1,6 @@
 import os
 import sys
 
-print(f"DEBUG: POSTGRES_HOST = {os.environ.get('POSTGRES_HOST')}")
-print(f"DEBUG: POSTGRES_USER = {os.environ.get('POSTGRES_USER')}")
 
 import requests
 import pandas as pd
@@ -61,4 +59,4 @@ if rows == 0:
 conn.commit()
 cursor.close()
 conn.close()
-print(f"✓ Daily ingest complete ({rows} rows inserted)")
+print(f"✓ Daily ingest complete ({rows} rows upserted, {start_date} -> {today})")
