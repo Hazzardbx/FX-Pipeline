@@ -21,6 +21,13 @@ conn = psycopg2.connect(
 
 
 st.title("ForeX Pipeline")
+
+df_stats = pd.read_sql("SELECT COUNT(*) as row_count, MAX(date) as latest_date FROM xchange_rates", conn)
+col1, col2 = st.columns(2)
+col1.metric("Rows loaded", int(df_stats["row_count"][0]))
+col2.metric("Latest date", str(df_stats["latest_date"][0]))
+
+
 df_pct_change = pd.read_sql("select * from pct_change_view", conn)
 df_volatility = pd.read_sql("select * from volatility_view", conn)
 df_trend = pd.read_sql("select * from trend_view ", conn)
