@@ -28,7 +28,8 @@ else:
 # Fetch new data from API
 today = datetime.now().strftime("%Y-%m-%d")
 url = f"https://api.frankfurter.app/{start_date}..{today}?base=EUR&symbols=USD,GBP,JPY,CHF,CNY"
-response = requests.get(url)
+response = requests.get(url, timeout=30)
+response.raise_for_status()
 data = response.json()
     
 # Transform and load
