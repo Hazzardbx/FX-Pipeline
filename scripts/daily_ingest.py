@@ -1,4 +1,5 @@
 import os
+import sys
 
 print(f"DEBUG: POSTGRES_HOST = {os.environ.get('POSTGRES_HOST')}")
 print(f"DEBUG: POSTGRES_USER = {os.environ.get('POSTGRES_USER')}")
@@ -18,15 +19,24 @@ conn = psycopg2.connect(
 )
 cursor = conn.cursor()
 cursor.execute("SELECT MAX(date) FROM xchange_rates;")
+
 last_date = cursor.fetchone()[0]
+today = datetime.now().strftime("%Y-%m-%d")
+
 
 if last_date is None:
     start_date = "2024-01-01"
 else:
     start_date = (last_date + timedelta(days=1)).strftime("%Y-%m-%d") 
 
+if start_date > today:
+   print("Already up to date, nothing to ingest")
+   cursor.close()
+   conn.close()
+   sys.exit(0)
+
 # Fetch new data from API
-today = datetime.now().strftime("%Y-%m-%d")
+
 url = f"https://api.frankfurter.app/{start_date}..{today}?base=EUR&symbols=USD,GBP,JPY,CHF,CNY"
 response = requests.get(url, timeout=30)
 response.raise_for_status()
@@ -40,6 +50,8 @@ for date_str, rates in data.get("rates", {}).items():
             VALUES (%s, %s, %s, %s)
             ON CONFLICT (date, base, quote) DO UPDATE SET rate = %s;
         """, (date_str, "EUR", quote, float(rate), float(rate)))
+
+
 
 conn.commit()
 cursor.close()
