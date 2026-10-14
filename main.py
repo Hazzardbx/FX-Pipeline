@@ -73,7 +73,7 @@ def run_pipeline():
     try:
         conn = psycopg2.connect(
             host=os.environ.get("POSTGRES_HOST"),
-            database=os.environ.get("POSTGRES_DB"),
+            database=os.environ.get("POSTGRES_DATABASE"),
             user=os.environ.get("POSTGRES_USER"),
             password=os.environ.get("POSTGRES_PASSWORD")
         )

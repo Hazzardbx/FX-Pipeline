@@ -13,7 +13,7 @@ A daily currency exchange rate pipeline: fetches, cleans, stores, and serves ECB
 - [x] Serve — Streamlit dashboard with 4 business-question views (price change, volatility, trend, correlation), deployed to Streamlit Community Cloud
 - [ ] Automated tests (pytest) — not yet, see "What's next"
 
-Data: ~4,985 rows (5 currency pairs, daily, backfilled from 2024-01-01), as of October 2026.
+Data: ~5,000 rows (5 currency pairs, daily, backfilled from 2024-01-01). Live row count and latest date: see the dashboard.
 
 ## Stack
 
@@ -31,7 +31,7 @@ cd serve
 streamlit run app.py          # opens the dashboard at localhost:8501
 ```
 
-Needs a `.env` with `POSTGRES_HOST`, `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`.
+Needs a `.env` with `POSTGRES_HOST`, `POSTGRES_DATABASE`, `POSTGRES_USER`, `POSTGRES_PASSWORD`.
 
 ## Architecture
 
