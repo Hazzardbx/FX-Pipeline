@@ -17,8 +17,16 @@ def run_pipeline():
     url = "https://api.frankfurter.dev/v2/rates"
     params = {"from": "2024-01-01", "base": "EUR", "quotes": "USD,GBP,JPY,CHF,CNY"}
 
+    response = None
     for i in range(5):
-        response = requests.get(url, params=params)
+        print(f"Attempt {i}")
+        try:
+            response = requests.get(url, params=params, timeout=10) #set to 0.001 to test the retry
+        except requests.exceptions.RequestException as e:
+            print(f"Request failed, attempt {i}: {e}")
+            time.sleep(2 ** i) # exponential backoff - waiting before retry
+            continue
+            
         if response.status_code == 200: #200 = success
             break
         elif response.status_code >= 400 and response.status_code < 500:
@@ -29,10 +37,13 @@ def run_pipeline():
             time.sleep(2 ** i) # exponential backoff
         else:
             print("No errors")
+    
 
-    if response.status_code != 200:
-        print(f"Failed to fetch data after {i+1} attempts. Status code: {response.status_code}")
-        return # exit the function without terminating the entire script
+    if response is None or response.status_code != 200: #"is not none" added to check for 400 errors, which are client errors
+        status = response.status_code if response is not None else 'no response'
+        raise RuntimeError(
+            f"Failed to fetch data from API after {i+1} attempts. Status code: {status}"
+            ) #added at 16/10/26 - raises an error if the API request fails after 5 attempts, with the status code of the last attempt.
 
     xchangerate = []
     for curr in response.json():
@@ -44,7 +55,10 @@ def run_pipeline():
         }
         xchangerate.append(daily_rate)
 
+    # xchangerate = []
     df = pd.DataFrame(xchangerate)
+    if df.empty: #added 16/10/26 - raises an error if the API returns no data, which could happen if the API is down or if the parameters are incorrect.
+        raise RuntimeError("No data to load: the API returned no rows.")
     print(df)
 
     ## TRANSFORM -------------------------------------------------------------------------------------
@@ -57,6 +71,9 @@ def run_pipeline():
         df.dropna(subset=['date','base','quote','rate'], inplace=True) # subset = columns to check for null values, inplace = not return a new df
         print(f"Null values removed from columns: {nulls[nulls > 0].index.tolist()}.")
 
+    if df.empty:
+        raise RuntimeError("No data to load: the API returned no rows, or all rows had null values.")
+        
     ## LOAD -------------------------------------------------------------------------------------
 
     create_table_query = """
@@ -81,7 +98,8 @@ def run_pipeline():
 
     except Exception as e:
         print(f"Error connecting to the database: {e}")
-
+        raise #added 16/10/26 - raises the error to stop the pipeline if the connection fails
+    
     #cursor creates a channel to the DB that allows to send commands and receive results.
     cur = conn.cursor()
     cur.execute(create_table_query)
