@@ -1,5 +1,6 @@
 import os
 import sys
+import time #added 16/10/26 - for exponential backoff
 
 
 import requests
@@ -36,9 +37,23 @@ if start_date > today:
 # Fetch new data from API
 
 url = f"https://api.frankfurter.app/{start_date}..{today}?base=EUR&symbols=USD,GBP,JPY,CHF,CNY"
-response = requests.get(url, timeout=30)
-response.raise_for_status()
-data = response.json()
+
+response = None
+last_error = None
+for i in range(5):
+    try:
+        response = requests.get(url, timeout=30)
+        response.raise_for_status()
+        break
+    except requests.exceptions.RequestException as e:
+        last_error = e
+        print(f"Attempt {i} failed: {e}")
+        time.sleep(2 ** i)  # exponential backoff
+else:
+    raise RuntimeError(f"Failed to fetch data from API after 5 attempts. Last error: {last_error}")
+#added 16/10/26 - raises an error if the API request fails after 5 attempts, with the status code of the last attempt.
+
+data = response.json()  
     
 # Transform and load
 rows = 0

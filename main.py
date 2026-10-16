@@ -21,7 +21,7 @@ def run_pipeline():
     for i in range(5):
         print(f"Attempt {i}")
         try:
-            response = requests.get(url, params=params, timeout=10) #set to 0.001 to test the retry
+            response = requests.get(url, params=params, timeout=10) 
         except requests.exceptions.RequestException as e:
             print(f"Request failed, attempt {i}: {e}")
             time.sleep(2 ** i) # exponential backoff - waiting before retry
